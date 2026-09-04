@@ -544,7 +544,8 @@ def render_tab(bucket_key: str) -> None:
 st.markdown("""
 <div class="page-header">
     <h1>Telkomsel Region West Java &mdash; GraPARI Collection Monitoring Dashboard</h1>
-    <p>Mobile Collection Operations &nbsp;|&nbsp; Follow-up status monitoring across all GraPARI branches &mdash; 30H / 60H / 90H</p>
+    <p style="margin-top:0.25rem;font-size:0.78rem;color:var(--text-muted);letter-spacing:0.03em">Periode 31 Agustus 2026</p>
+    <p style="margin-top:0.5rem">Mobile Collection Operations &nbsp;|&nbsp; Follow-up status monitoring across all GraPARI branches &mdash; 30H / 60H / 90H</p>
 </div>
 """, unsafe_allow_html=True)
 
