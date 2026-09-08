@@ -141,6 +141,39 @@ st.markdown("""
     line-height: 1.4;
   }
 
+  /* Mobile: compact header ≤640px */
+  @media (max-width: 640px) {
+    .block-container {
+      padding-top: 100px !important;
+    }
+    .sticky-header {
+      height: auto !important;
+      min-height: 72px;
+      padding: 0.6rem 1rem;
+      gap: 0.75rem;
+      align-items: center;
+    }
+    .sticky-header .hdr-logo {
+      width: 44px !important;
+      height: 44px !important;
+      border-width: 2px !important;
+      flex-shrink: 0;
+    }
+    .sticky-header .hdr-text h1 {
+      font-size: 0.8rem !important;
+      line-height: 1.2 !important;
+    }
+    .sticky-header .hdr-date {
+      font-size: 0.58rem !important;
+      padding: 0.08rem 0.45rem !important;
+      margin-top: 0.1rem !important;
+    }
+    .sticky-header .hdr-text p {
+      font-size: 0.65rem !important;
+      line-height: 1.3 !important;
+    }
+  }
+
   /* Section labels */
   .section-label {
     font-size: 0.72rem !important; font-weight: 700 !important;
