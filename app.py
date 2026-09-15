@@ -7,6 +7,7 @@ import html as _html
 import json
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -15,6 +16,7 @@ from data_processor import (
     COL_BRANCH, COL_MSISDN, COL_STATUS, COL_FOLLOWUP, COL_FU_STATUS,
     compute_followup_kpis, extract_customer_records, extract_summary_kpis,
 )
+from trend_loader import MONTHS, load_trend_data
 
 # Page config — must be the first Streamlit call
 st.set_page_config(
@@ -784,6 +786,113 @@ div[data-testid="stButton"] button:focus:not(:active) {
                  help="Loading ulang untuk update data terbaru"):
         clear_all_cache()
         st.rerun()
+
+# ── Trend chart — main page (above tabs) ──────────────────────────────────────
+st.markdown("---")
+st.markdown("#### 📈 Tren Collection Rate per Bulan — 2026")
+
+_BUCKET_COLORS = {
+    "60-H": "#E30613",
+    "90-H": "#2563EB",
+    "30-H": "#16a34a",
+}
+_ALL_BRANCHES = ["Bandung", "Cirebon", "Soreang", "Tasikmalaya", "Jawa Barat"]
+_ALL_BUCKETS  = ["30-H", "60-H", "90-H"]
+
+col_f1, col_f2 = st.columns([1, 2])
+with col_f1:
+    selected_branch = st.selectbox("Branch", _ALL_BRANCHES, key="trend_branch")
+with col_f2:
+    selected_buckets = st.multiselect(
+        "Bucket", _ALL_BUCKETS, default=["60-H", "90-H"], key="trend_bucket"
+    )
+
+if not selected_buckets:
+    st.warning("Pilih minimal satu bucket untuk menampilkan grafik.")
+else:
+    available_buckets = [b for b in selected_buckets if b != "30-H"]
+    has_30h = "30-H" in selected_buckets
+
+    if has_30h and not available_buckets:
+        st.info("Data 30H belum tersedia untuk periode ini.")
+    else:
+        df_trend = load_trend_data()
+        df_filtered = df_trend[
+            (df_trend["Branch"] == selected_branch) &
+            (df_trend["Bucket"].isin(available_buckets))
+        ].copy()
+        df_filtered = df_filtered.sort_values("Month")
+
+        fig = go.Figure()
+
+        for bucket in available_buckets:
+            color = _BUCKET_COLORS[bucket]
+            df_b = df_filtered[df_filtered["Bucket"] == bucket]
+            kpi_val = df_b["KPI"].iloc[0] if not df_b.empty else None
+
+            fig.add_trace(go.Scatter(
+                x=df_b["Month"].tolist(),
+                y=df_b["Rate"].tolist(),
+                mode="lines+markers",
+                name=bucket,
+                line=dict(color=color, width=2.5),
+                marker=dict(size=7),
+                hovertemplate="%{x}: %{y:.2%}<extra>" + bucket + "</extra>",
+            ))
+
+            if kpi_val is not None:
+                fig.add_trace(go.Scatter(
+                    x=MONTHS,
+                    y=[kpi_val] * len(MONTHS),
+                    mode="lines",
+                    name=f"KPI {bucket} ({kpi_val:.2%})",
+                    line=dict(color=color, width=1.5, dash="dash"),
+                    opacity=0.55,
+                    hovertemplate=f"Target {bucket}: {kpi_val:.2%}<extra></extra>",
+                ))
+
+        if has_30h:
+            st.info("Catatan: Data 30H belum tersedia dan tidak ditampilkan pada grafik.")
+
+        fig.update_layout(
+            title=dict(
+                text=f"Collection Rate — {selected_branch}",
+                font=dict(size=15, color="#1f2328"),
+            ),
+            xaxis=dict(
+                title="Bulan",
+                categoryorder="array",
+                categoryarray=MONTHS,
+                showgrid=False,
+                tickfont=dict(size=12),
+            ),
+            yaxis=dict(
+                title="Collection Rate (%)",
+                tickformat=".2%",
+                range=[0.95, 1.005],
+                showgrid=True,
+                gridcolor="#e5e7eb",
+                gridwidth=1,
+                tickfont=dict(size=12),
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="left",
+                x=0,
+                font=dict(size=12),
+            ),
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(t=60, b=40, l=10, r=10),
+            hovermode="x unified",
+            font=dict(family="-apple-system, 'Segoe UI', system-ui, sans-serif"),
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("---")
 
 # Tabs
 tab30, tab60, tab90 = st.tabs(["Cek 30 Hari", "Cek 60 Hari", "Cek 90 Hari"])
