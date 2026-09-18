@@ -865,10 +865,9 @@ st.markdown("#### Tren Collection Rate 2026")
 _BUCKET_COLORS = {
     "60-H": "#E30613",
     "90-H": "#2563EB",
-    "30-H": "#16a34a",
 }
 _ALL_BRANCHES = ["Bandung", "Cirebon", "Soreang", "Tasikmalaya", "Jawa Barat"]
-_ALL_BUCKETS  = ["30-H", "60-H", "90-H"]
+_ALL_BUCKETS  = ["60-H", "90-H"]
 
 col_f1, col_f2 = st.columns([1, 2])
 with col_f1:
@@ -881,49 +880,40 @@ with col_f2:
 if not selected_buckets:
     st.warning("Pilih minimal satu bucket untuk menampilkan grafik.")
 else:
-    available_buckets = [b for b in selected_buckets if b != "30-H"]
-    has_30h = "30-H" in selected_buckets
+    df_trend = load_trend_data()
+    df_filtered = df_trend[
+        (df_trend["Branch"] == selected_branch) &
+        (df_trend["Bucket"].isin(selected_buckets))
+    ].copy()
+    df_filtered = df_filtered.sort_values("Month")
 
-    if has_30h and not available_buckets:
-        st.info("Data 30H belum tersedia untuk periode ini.")
-    else:
-        df_trend = load_trend_data()
-        df_filtered = df_trend[
-            (df_trend["Branch"] == selected_branch) &
-            (df_trend["Bucket"].isin(available_buckets))
-        ].copy()
-        df_filtered = df_filtered.sort_values("Month")
+    fig = go.Figure()
 
-        fig = go.Figure()
+    for bucket in selected_buckets:
+        color = _BUCKET_COLORS[bucket]
+        df_b = df_filtered[df_filtered["Bucket"] == bucket]
+        kpi_val = df_b["KPI"].iloc[0] if not df_b.empty else None
 
-        for bucket in available_buckets:
-            color = _BUCKET_COLORS[bucket]
-            df_b = df_filtered[df_filtered["Bucket"] == bucket]
-            kpi_val = df_b["KPI"].iloc[0] if not df_b.empty else None
+        fig.add_trace(go.Scatter(
+            x=df_b["Month"].tolist(),
+            y=df_b["Rate"].tolist(),
+            mode="lines+markers",
+            name=bucket,
+            line=dict(color=color, width=2.5),
+            marker=dict(size=7),
+            hovertemplate="%{x}: %{y:.2%}<extra>" + bucket + "</extra>",
+        ))
 
+        if kpi_val is not None:
             fig.add_trace(go.Scatter(
-                x=df_b["Month"].tolist(),
-                y=df_b["Rate"].tolist(),
-                mode="lines+markers",
-                name=bucket,
-                line=dict(color=color, width=2.5),
-                marker=dict(size=7),
-                hovertemplate="%{x}: %{y:.2%}<extra>" + bucket + "</extra>",
+                x=MONTHS,
+                y=[kpi_val] * len(MONTHS),
+                mode="lines",
+                name=f"KPI {bucket} ({kpi_val:.2%})",
+                line=dict(color=color, width=1.5, dash="dash"),
+                opacity=0.55,
+                hovertemplate=f"Target {bucket}: {kpi_val:.2%}<extra></extra>",
             ))
-
-            if kpi_val is not None:
-                fig.add_trace(go.Scatter(
-                    x=MONTHS,
-                    y=[kpi_val] * len(MONTHS),
-                    mode="lines",
-                    name=f"KPI {bucket} ({kpi_val:.2%})",
-                    line=dict(color=color, width=1.5, dash="dash"),
-                    opacity=0.55,
-                    hovertemplate=f"Target {bucket}: {kpi_val:.2%}<extra></extra>",
-                ))
-
-        if has_30h:
-            st.info("Catatan: Data 30H belum tersedia dan tidak ditampilkan pada grafik.")
 
         fig.update_layout(
             title=dict(
