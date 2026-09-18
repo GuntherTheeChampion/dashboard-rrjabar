@@ -14,7 +14,7 @@ import streamlit.components.v1 as components
 from data_loader import BUCKET_URLS, clear_all_cache, fetch_workbook
 from data_processor import (
     COL_BRANCH, COL_MSISDN, COL_STATUS, COL_FOLLOWUP, COL_FU_STATUS,
-    compute_followup_kpis, extract_customer_records, extract_summary_kpis,
+    compute_followup_kpis, extract_customer_records, extract_rankings, extract_summary_kpis,
 )
 from trend_loader import MONTHS, load_trend_data
 
@@ -293,6 +293,9 @@ def render_kpi_cards(summary: dict) -> None:
     bayar_msisdn    = summary.get("bayar_msisdn")
     bayar_rp        = summary.get("bayar_rp")
     pct             = summary.get("pct_collection")
+    pct_target      = summary.get("pct_target")
+
+    target_label = f"Target {_fmt_pct(pct_target)}" if pct_target is not None else "Target —"
 
     c1.metric(
         "Total Target Tagihan",
@@ -315,9 +318,72 @@ def render_kpi_cards(summary: dict) -> None:
     c4.metric(
         "% Collection",
         _fmt_pct(pct),
-        delta="Target 98.20%",
+        delta=target_label,
         delta_color="off",
     )
+
+
+# GraPARI ranking section — top & bottom performers
+def render_rankings(rankings: dict, bucket_key: str) -> None:
+    bottom = rankings.get("bottom", [])
+    top    = rankings.get("top", [])
+    if not bottom and not top:
+        return
+
+    st.markdown(
+        f'<p class="section-label">Peringkat GraPARI &nbsp;&middot;&nbsp; {bucket_key}H</p>',
+        unsafe_allow_html=True,
+    )
+
+    col_bot, col_top = st.columns(2)
+
+    def _row_html(item: dict, is_bottom: bool) -> str:
+        rank       = item["rank"]
+        name       = item["name"].replace("GraPARI ", "")
+        pct        = item["pct"]
+        pencapaian = item["pencapaian"]
+
+        if is_bottom:
+            rank_color = "#dc2626"   # red-600
+            bg_color   = "rgba(220,38,38,0.07)"
+            border_col = "rgba(220,38,38,0.18)"
+        else:
+            rank_color = "#16a34a"   # green-600
+            bg_color   = "rgba(22,163,74,0.07)"
+            border_col = "rgba(22,163,74,0.18)"
+
+        pct_str = f"{pct * 100:.2f}%" if pct is not None else f"{pencapaian * 100:.2f}%"
+
+        return (
+            f'<div style="display:flex;align-items:center;gap:.65rem;padding:.45rem .6rem;'
+            f'margin-bottom:.3rem;border-radius:5px;background:{bg_color};border:1px solid {border_col}">'
+            f'<span style="font-size:.78rem;font-weight:700;color:{rank_color};min-width:1.4rem;'
+            f'text-align:center">{rank}</span>'
+            f'<span style="font-size:.82rem;color:var(--text-primary);flex:1;'
+            f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="GraPARI {name}">'
+            f'{name}</span>'
+            f'<span style="font-size:.8rem;font-weight:600;color:{rank_color};'
+            f'white-space:nowrap">{pct_str}</span>'
+            f'</div>'
+        )
+
+    with col_bot:
+        st.markdown(
+            '<div style="font-size:.72rem;font-weight:700;color:#dc2626;text-transform:uppercase;'
+            'letter-spacing:.07em;margin-bottom:.5rem">Perlu Perhatian</div>',
+            unsafe_allow_html=True,
+        )
+        rows_html = "".join(_row_html(item, is_bottom=True) for item in bottom)
+        st.markdown(f'<div>{rows_html}</div>', unsafe_allow_html=True)
+
+    with col_top:
+        st.markdown(
+            '<div style="font-size:.72rem;font-weight:700;color:#16a34a;text-transform:uppercase;'
+            'letter-spacing:.07em;margin-bottom:.5rem">Pencapaian Tertinggi</div>',
+            unsafe_allow_html=True,
+        )
+        rows_html = "".join(_row_html(item, is_bottom=False) for item in top)
+        st.markdown(f'<div>{rows_html}</div>', unsafe_allow_html=True)
 
 
 # Follow-up status cards — 2 inline cards with conditional colouring
@@ -584,22 +650,22 @@ def render_table_with_find(df: pd.DataFrame,
 # Tab renderer
 DEEP_LINKS = {
     "30": {
-        "Bandung": "https://docs.google.com/spreadsheets/d/15PQ_1X2ExOr6TVTDTTkkjyAfM1qywLp_/edit?gid=345541408#gid=345541408",
-        "Cirebon": "https://docs.google.com/spreadsheets/d/15PQ_1X2ExOr6TVTDTTkkjyAfM1qywLp_/edit?gid=1877488003#gid=1877488003",
-        "Soreang": "https://docs.google.com/spreadsheets/d/15PQ_1X2ExOr6TVTDTTkkjyAfM1qywLp_/edit?gid=1979635845#gid=1979635845",
-        "Tasik":   "https://docs.google.com/spreadsheets/d/15PQ_1X2ExOr6TVTDTTkkjyAfM1qywLp_/edit?gid=20802915#gid=20802915",
+        "Bandung": "https://docs.google.com/spreadsheets/d/16qXh1as-6QgI3JrE8xvPA41-LESAVyVT/edit?gid=1120671799#gid=1120671799",
+        "Cirebon": "https://docs.google.com/spreadsheets/d/16qXh1as-6QgI3JrE8xvPA41-LESAVyVT/edit?gid=948339330#gid=948339330",
+        "Soreang": "https://docs.google.com/spreadsheets/d/16qXh1as-6QgI3JrE8xvPA41-LESAVyVT/edit?gid=2036483408#gid=2036483408",
+        "Tasik":   "https://docs.google.com/spreadsheets/d/16qXh1as-6QgI3JrE8xvPA41-LESAVyVT/edit?gid=2103088493#gid=2103088493",
     },
     "60": {
-        "Bandung": "https://docs.google.com/spreadsheets/d/1Ksm2NdALwhYFmI0bXbHnCCUA2QLQeLj3/edit?gid=2140506757#gid=2140506757",
-        "Cirebon": "https://docs.google.com/spreadsheets/d/1Ksm2NdALwhYFmI0bXbHnCCUA2QLQeLj3/edit?gid=1797628141#gid=1797628141",
-        "Soreang": "https://docs.google.com/spreadsheets/d/1Ksm2NdALwhYFmI0bXbHnCCUA2QLQeLj3/edit?gid=1639254421#gid=1639254421",
-        "Tasik":   "https://docs.google.com/spreadsheets/d/1Ksm2NdALwhYFmI0bXbHnCCUA2QLQeLj3/edit?gid=2112723004#gid=2112723004",
+        "Bandung": "https://docs.google.com/spreadsheets/d/1S-yXXidmDb6qwsudYe4yXgzG4Xw0WCUC/edit?gid=227052033#gid=227052033",
+        "Cirebon": "https://docs.google.com/spreadsheets/d/1S-yXXidmDb6qwsudYe4yXgzG4Xw0WCUC/edit?gid=1817837638#gid=1817837638",
+        "Soreang": "https://docs.google.com/spreadsheets/d/1S-yXXidmDb6qwsudYe4yXgzG4Xw0WCUC/edit?gid=526873559#gid=526873559",
+        "Tasik":   "https://docs.google.com/spreadsheets/d/1S-yXXidmDb6qwsudYe4yXgzG4Xw0WCUC/edit?gid=1701189022#gid=1701189022",
     },
     "90": {
-        "Bandung": "https://docs.google.com/spreadsheets/d/1xVEObliWzzX-D2n2ZZmWQIDSXPL1JW45/edit?gid=1906827724#gid=1906827724",
-        "Cirebon": "https://docs.google.com/spreadsheets/d/1xVEObliWzzX-D2n2ZZmWQIDSXPL1JW45/edit?gid=1694707041#gid=1694707041",
-        "Soreang": "https://docs.google.com/spreadsheets/d/1xVEObliWzzX-D2n2ZZmWQIDSXPL1JW45/edit?gid=1805663529#gid=1805663529",
-        "Tasik":   "https://docs.google.com/spreadsheets/d/1xVEObliWzzX-D2n2ZZmWQIDSXPL1JW45/edit?gid=99814949#gid=99814949",
+        "Bandung": "https://docs.google.com/spreadsheets/d/14-TFIE2tIMup2BP0VZvgwCsqTiYdFVgO/edit?gid=87501463#gid=87501463",
+        "Cirebon": "https://docs.google.com/spreadsheets/d/14-TFIE2tIMup2BP0VZvgwCsqTiYdFVgO/edit?gid=1439401178#gid=1439401178",
+        "Soreang": "https://docs.google.com/spreadsheets/d/14-TFIE2tIMup2BP0VZvgwCsqTiYdFVgO/edit?gid=488080914#gid=488080914",
+        "Tasik":   "https://docs.google.com/spreadsheets/d/14-TFIE2tIMup2BP0VZvgwCsqTiYdFVgO/edit?gid=907616748#gid=907616748",
     },
 }
 
@@ -615,7 +681,7 @@ def render_tab(bucket_key: str) -> None:
         return
 
     summary_kpis  = extract_summary_kpis(sheets, bucket_key)
-    customer_df   = extract_customer_records(sheets)
+    customer_df   = extract_customer_records(sheets, bucket_key)
 
     # Filters
     st.markdown('<p class="section-label">Filters</p>', unsafe_allow_html=True)
@@ -666,6 +732,11 @@ def render_tab(bucket_key: str) -> None:
         unsafe_allow_html=True,
     )
     render_kpi_cards(branch_summary)
+
+    # Ranking section — always shows region-wide top/bottom regardless of branch filter
+    rankings = extract_rankings(sheets, bucket_key)
+    st.markdown("<hr>", unsafe_allow_html=True)
+    render_rankings(rankings, bucket_key)
 
     # Apply customer record filters
     filtered = customer_df.copy()
@@ -754,9 +825,9 @@ st.markdown("""
 
   <!-- Text content -->
   <div class="hdr-text">
-    <h1>Telkomsel Region West Java &mdash; GraPARI Collection Monitoring Dashboard</h1>
-    <span class="hdr-date">Periode 31 Agustus 2026</span>
-    <p>Mobile Collection Operations &nbsp;|&nbsp; Follow-up status monitoring across all GraPARI branches &mdash; 30H / 60H / 90H</p>
+    <h1>Telkomsel Region West Java: GraPARI Collection Monitoring Dashboard</h1>
+    <span class="hdr-date">Periode 16 September 2026</span>
+    <p>Mobile Collection Operations | Follow-up status monitoring across all GraPARI branches | 30H / 60H / 90H</p>
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -789,7 +860,7 @@ div[data-testid="stButton"] button:focus:not(:active) {
 
 # ── Trend chart — main page (above tabs) ──────────────────────────────────────
 st.markdown("---")
-st.markdown("#### 📈 Tren Collection Rate per Bulan — 2026")
+st.markdown("#### Tren Collection Rate 2026")
 
 _BUCKET_COLORS = {
     "60-H": "#E30613",

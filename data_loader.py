@@ -14,11 +14,12 @@ import pandas as pd
 import requests
 import streamlit as st
 
-# Live Google Sheets source URLs (can be /edit or /export form)
+# Live Google Sheets source URLs — each bucket is a separate spreadsheet with 5 tabs
+# (Perform + 4 branch sheets). Export the full workbook (no gid) to get all sheets.
 BUCKET_URLS: dict[str, str] = {
-    "30": "https://docs.google.com/spreadsheets/d/15PQ_1X2ExOr6TVTDTTkkjyAfM1qywLp_/edit",
-    "60": "https://docs.google.com/spreadsheets/d/1Ksm2NdALwhYFmI0bXbHnCCUA2QLQeLj3/edit",
-    "90": "https://docs.google.com/spreadsheets/d/1xVEObliWzzX-D2n2ZZmWQIDSXPL1JW45/edit",
+    "30": "https://docs.google.com/spreadsheets/d/16qXh1as-6QgI3JrE8xvPA41-LESAVyVT/edit",
+    "60": "https://docs.google.com/spreadsheets/d/1S-yXXidmDb6qwsudYe4yXgzG4Xw0WCUC/edit",
+    "90": "https://docs.google.com/spreadsheets/d/14-TFIE2tIMup2BP0VZvgwCsqTiYdFVgO/edit",
 }
 
 # Sheet index → canonical branch label (index 0 = summary, skipped)
@@ -39,6 +40,7 @@ _ANTI_CACHE_HEADERS = {
 
 def _build_export_url(url: str) -> str:
     base = url.split("/edit")[0].split("/export")[0].rstrip("/")
+    # Export full workbook (all sheets) — no gid so all 5 tabs are included
     return f"{base}/export?format=xlsx&nocache={int(time.time() * 1000)}"
 
 
