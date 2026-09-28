@@ -11,7 +11,8 @@ import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 
-from data_loader import BUCKET_URLS, clear_all_cache, fetch_workbook
+from data_loader import clear_all_cache, fetch_workbook
+from snapshot_manager import load_snapshots, save_snapshot, delete_snapshot
 from data_processor import (
     COL_BRANCH, COL_MSISDN, COL_STATUS, COL_FOLLOWUP, COL_FU_STATUS,
     compute_followup_kpis, extract_customer_records, extract_rankings, extract_summary_kpis,
@@ -235,6 +236,113 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+
+
+import datetime
+
+ID_MONTHS = {
+    1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+    5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+    9: "September", 10: "Oktober", 11: "November", 12: "Desember"
+}
+
+def format_id_date(iso_str):
+    try:
+        dt = datetime.datetime.strptime(iso_str, "%Y-%m-%d")
+        return f"{dt.day} {ID_MONTHS[dt.month]} {dt.year}"
+    except:
+        return iso_str
+
+snapshots = load_snapshots()
+if not snapshots:
+    snapshots = [{"id": "default", "name": "None", "date": "None", "urls": {"30": "", "60": "", "90": ""}}]
+
+date_map = {s.get("date", s["name"]): s for s in snapshots}
+
+if "current_page" not in st.session_state:
+    st.session_state.current_page = "dashboard"
+
+if st.session_state.current_page == "admin":
+    st.header("🗂️ Manajemen Periode Data")
+    if st.button("⬅️ Kembali ke Dashboard"):
+        st.session_state.current_page = "dashboard"
+        st.rerun()
+        
+    st.markdown("---")
+    st.subheader("➕ Tambah / Update Data (Kalender)")
+    new_date_obj = st.date_input("Pilih Tanggal:", value=datetime.date.today())
+    new_date_str = new_date_obj.isoformat()
+    
+    existing = date_map.get(new_date_str, {})
+    pre_30 = existing.get("urls", {}).get("30", "")
+    pre_60 = existing.get("urls", {}).get("60", "")
+    pre_90 = existing.get("urls", {}).get("90", "")
+    
+    new_30 = st.text_input("Link Spreadsheet 30H", value=pre_30, key="new_30")
+    new_60 = st.text_input("Link Spreadsheet 60H", value=pre_60, key="new_60")
+    new_90 = st.text_input("Link Spreadsheet 90H", value=pre_90, key="new_90")
+    if st.button("Simpan Data untuk Tanggal Ini"):
+        if date_map.get(new_date_str):
+            st.warning("Data for this date already exists. Please delete it first before re‑upload.")
+        else:
+            save_snapshot(new_date_str, new_30, new_60, new_90)
+            st.success("Data saved successfully.")
+            st.balloons()
+            st.rerun()
+
+    st.markdown("---")
+    st.subheader("🗑️ Hapus Data Periode")
+    delete_display = [format_id_date(s.get("date", s["name"])) for s in snapshots]
+    delete_selected = st.selectbox("**Pilih Periode untuk Dihapus:**", delete_display, key="del_select")
+    del_idx = delete_display.index(delete_selected)
+    del_date = snapshots[del_idx].get("date", snapshots[del_idx].get("name"))
+    
+    if st.button("Hapus Data untuk Periode Ini"):
+        delete_snapshot(del_date)
+        st.success("Data dihapus.")
+        st.rerun()
+        
+    st.stop()
+
+# --- DASHBOARD VIEW ---
+st.markdown("""
+<style>
+div[data-testid="stButton"] button {
+    background-color: #16a34a !important;
+    border-color: #16a34a !important;
+    color: #ffffff !important;
+}
+div[data-testid="stButton"] button:hover {
+    background-color: #15803d !important;
+    border-color: #15803d !important;
+    color: #ffffff !important;
+}
+div[data-testid="stButton"] button:focus:not(:active) {
+    border-color: #15803d !important;
+    color: #ffffff !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+display_names = [format_id_date(s.get("date", s["name"])) for s in snapshots]
+
+col_sel, col_btn1, col_btn2 = st.columns([6, 2, 2])
+with col_sel:
+    selected_display = st.selectbox("**PILIH PERIODE AKTIF:**", display_names)
+    selected_idx = display_names.index(selected_display)
+    selected_snapshot = snapshots[selected_idx]
+
+with col_btn1:
+    st.markdown("<div style='margin-top: 1.75rem'></div>", unsafe_allow_html=True)
+    if st.button("⚙️ Kelola Data Periode", use_container_width=True):
+        st.session_state.current_page = "admin"
+        st.rerun()
+
+with col_btn2:
+    st.markdown("<div style='margin-top: 1.75rem'></div>", unsafe_allow_html=True)
+    if st.button("🔄 Refresh Data", type="secondary", help="Loading ulang untuk update data terbaru", use_container_width=True):
+        clear_all_cache()
+        st.rerun()
 
 # Helpers
 def _fmt_rp(val) -> str:
@@ -644,8 +752,12 @@ DEEP_LINKS = {
 }
 
 
-def render_tab(bucket_key: str) -> None:
-    url = BUCKET_URLS[bucket_key]
+def render_tab(bucket_key: str, urls_dict: dict) -> None:
+    url = urls_dict.get(bucket_key, "")
+
+    if not url or url.strip() == "":
+        st.info(f"Data belum diinput untuk {bucket_key} Hari.")
+        return
 
     with st.spinner("Memuat data..."):
         sheets = fetch_workbook(url)
@@ -745,7 +857,7 @@ def render_tab(bucket_key: str) -> None:
 
 
 # Page header — sticky, full-width, red with diagonal pill shapes
-st.markdown("""
+st.markdown(f"""
 <div class="sticky-header">
   <!-- SVG decorative layer: diagonal rounded pills + halftone dots -->
   <svg class="hdr-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid slice">
@@ -795,37 +907,13 @@ st.markdown("""
   <!-- Text content -->
   <div class="hdr-text">
     <h1>Collection Monitoring Dashboard</h1>
-    <span class="hdr-date">Periode 16 September 2026</span>
+    <span class="hdr-date">Periode {format_id_date(selected_snapshot.get("date", selected_snapshot["name"]))}</span>
     <p>Mobile Collection Operations | Follow-up status monitoring across all GraPARI branches | 30H / 60H / 90H</p>
   </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Refresh button
-rcol1, rcol2 = st.columns([9, 1])
-with rcol2:
-    st.markdown("""
-<style>
-div[data-testid="stButton"] button {
-    background-color: #16a34a !important;
-    border-color: #16a34a !important;
-    color: #ffffff !important;
-}
-div[data-testid="stButton"] button:hover {
-    background-color: #15803d !important;
-    border-color: #15803d !important;
-    color: #ffffff !important;
-}
-div[data-testid="stButton"] button:focus:not(:active) {
-    border-color: #15803d !important;
-    color: #ffffff !important;
-}
-</style>
-""", unsafe_allow_html=True)
-    if st.button("Refresh Data", type="secondary",
-                 help="Loading ulang untuk update data terbaru"):
-        clear_all_cache()
-        st.rerun()
+
 
 # ── Trend chart — main page (above tabs) ──────────────────────────────────────
 st.markdown("---")
@@ -928,10 +1016,10 @@ st.markdown("---")
 tab30, tab60, tab90 = st.tabs(["Cek 30 Hari", "Cek 60 Hari", "Cek 90 Hari"])
 
 with tab30:
-    render_tab("30")
+    render_tab("30", selected_snapshot["urls"])
 
 with tab60:
-    render_tab("60")
+    render_tab("60", selected_snapshot["urls"])
 
 with tab90:
-    render_tab("90")
+    render_tab("90", selected_snapshot["urls"])

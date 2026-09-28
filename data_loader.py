@@ -44,6 +44,7 @@ def _build_export_url(url: str) -> str:
     return f"{base}/export?format=xlsx&nocache={int(time.time() * 1000)}"
 
 
+@st.cache_data(ttl=600)
 def fetch_workbook(url: str) -> dict[str, pd.DataFrame]:
     # No @st.cache_data — every call makes a real HTTP request to Google Sheets
     export_url = _build_export_url(url)
@@ -62,6 +63,4 @@ def fetch_workbook(url: str) -> dict[str, pd.DataFrame]:
 
 
 def clear_all_cache() -> None:
-    # No-op — kept so the Refresh button in app.py doesn't break
-    # st.rerun() alone is sufficient since there is no Streamlit cache
-    pass
+    st.cache_data.clear()
