@@ -110,13 +110,14 @@ def init_auth_session():
     if "cookie_controller" not in st.session_state:
         st.session_state.cookie_controller = CookieController()
         
-    if "user" not in st.session_state:
+    if st.session_state.get("user") is None:
         # Check if auth token exists in cookies synchronously via context
         auth_cookie = None
         if hasattr(st, "context") and hasattr(st.context, "cookies"):
             auth_cookie = st.context.cookies.get("auth_token")
             
         if not auth_cookie:
+            # This might return None on the first run, but trigger a rerun when ready
             auth_cookie = st.session_state.cookie_controller.get("auth_token")
             
         if auth_cookie:
@@ -128,6 +129,8 @@ def init_auth_session():
                 "picture": None,
                 "role": role
             }
+            # Force a rerun to immediately render the dashboard if we just loaded the cookie
+            st.rerun()
         else:
             st.session_state.user = None
 
