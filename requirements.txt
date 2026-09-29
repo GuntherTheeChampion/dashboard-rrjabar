@@ -5,4 +5,3 @@ requests
 plotly
 streamlit-oauth
 python-dotenv
-streamlit-cookies-controller

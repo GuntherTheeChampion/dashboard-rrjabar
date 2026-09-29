@@ -103,34 +103,35 @@ def has_permission(permission_name):
     role_perms = config.get("permissions", {}).get(role, [])
     return permission_name in role_perms
 
+from itsdangerous import URLSafeSerializer
+
+# Use a secure secret key for token signing
+_TOKEN_SECRET = "RR_JABAR_SESSION_KEY_2026_xYz!"
+_serializer = URLSafeSerializer(_TOKEN_SECRET)
+
 def init_auth_session():
     """Ensure session state variables for authentication are initialized."""
-    from streamlit_cookies_controller import CookieController
-    
-    if "cookie_controller" not in st.session_state:
-        st.session_state.cookie_controller = CookieController()
-        
     if st.session_state.get("user") is None:
-        # Check if auth token exists in cookies synchronously via context
-        auth_cookie = None
-        if hasattr(st, "context") and hasattr(st.context, "cookies"):
-            auth_cookie = st.context.cookies.get("auth_token")
-            
-        if not auth_cookie:
-            # This might return None on the first run, but trigger a rerun when ready
-            auth_cookie = st.session_state.cookie_controller.get("auth_token")
-            
-        if auth_cookie:
+        auth_email = None
+        
+        # Check query parameters for session token
+        if hasattr(st, "query_params") and "session" in st.query_params:
+            token = st.query_params["session"]
+            try:
+                data = _serializer.loads(token)
+                auth_email = data.get("email")
+            except Exception:
+                pass # Invalid or expired token
+                
+        if auth_email:
             # Reconstruct the user session automatically
-            role = resolve_role(auth_cookie)
+            role = resolve_role(auth_email)
             st.session_state.user = {
-                "email": auth_cookie,
-                "name": auth_cookie.split("@")[0],  # simple default name
+                "email": auth_email,
+                "name": auth_email.split("@")[0],  # simple default name
                 "picture": None,
                 "role": role
             }
-            # Force a rerun to immediately render the dashboard if we just loaded the cookie
-            st.rerun()
         else:
             st.session_state.user = None
 
@@ -143,16 +144,15 @@ def login_user(email, name="User", picture=None):
         "picture": picture,
         "role": role
     }
-    # Set the cookie with a 7-day expiration
-    if "cookie_controller" in st.session_state:
-        st.session_state.cookie_controller.set("auth_token", email, max_age=86400 * 7)
+    
+    # Set the token in query params to persist session across refresh
+    if hasattr(st, "query_params"):
+        token = _serializer.dumps({"email": email})
+        st.query_params["session"] = token
 
 def logout_user():
     """Clear user session state and query parameters."""
     st.session_state.user = None
-    if "cookie_controller" in st.session_state:
-        st.session_state.cookie_controller.remove("auth_token")
-        
     if hasattr(st, "query_params"):
         st.query_params.clear()
     st.rerun()
