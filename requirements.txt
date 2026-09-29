@@ -1,0 +1,9 @@
+streamlit
+pandas
+openpyxl
+requests
+plotly
+streamlit-oauth
+python-dotenv
+
+

@@ -1,0 +1,37 @@
+{
+  "roles": {
+    "admin": [
+      "gunturputraananta@gmail.com"
+    ],
+    "manager": [
+      "retentionmobilejabar@gmail.com"
+    ],
+    "co-viewer": []
+  },
+  "domain_defaults": {},
+  "permissions": {
+    "admin": [
+      "view_dashboard",
+      "export_data",
+      "save_snapshot",
+      "delete_snapshot",
+      "clear_cache"
+    ],
+    "manager": [
+      "view_dashboard",
+      "export_data",
+      "save_snapshot",
+      "delete_snapshot",
+      "clear_cache"
+    ],
+    "co-viewer": [
+      "view_dashboard",
+      "export_data",
+      "save_snapshot",
+      "delete_snapshot"
+    ],
+    "viewer": [
+      "view_dashboard"
+    ]
+  }
+}
