@@ -366,7 +366,7 @@ def render_login_component():
                 "access_type=offline&prompt=consent"
             )
             st.markdown(f"""
-            <a href="{google_auth_url}" target="_self" style="text-decoration: none;">
+            <a href="{google_auth_url}" target="_blank" style="text-decoration: none;">
                 <button style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; background-color: #ffffff; color: #374151; border: 1px solid #d1d5db; padding: 12px 24px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <svg width="18" height="18" viewBox="0 0 24 24">
                         <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
