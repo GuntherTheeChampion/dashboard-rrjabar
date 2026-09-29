@@ -41,7 +41,15 @@ def save_snapshot(date_str: str, url_30: str, url_60: str, url_90: str):
         
     with open(SNAPSHOTS_FILE, "w", encoding="utf-8") as f:
         json.dump(snapshots, f, indent=2)
+        
+    try:
+        from src.github_sync import push_to_github
+        push_to_github(SNAPSHOTS_FILE)
+    except Exception as e:
+        print(f"Error triggering sync: {e}")
+        
     return new_snapshot
+    
 def delete_snapshot(date_str: str):
     """Remove a snapshot entry for the given date string.
     Supports both "date" and legacy "name" keys.
@@ -50,5 +58,12 @@ def delete_snapshot(date_str: str):
     new_snapshots = [s for s in snapshots if s.get("date") != date_str and s.get("name") != date_str]
     with open(SNAPSHOTS_FILE, "w", encoding="utf-8") as f:
         json.dump(new_snapshots, f, indent=2)
+        
+    try:
+        from src.github_sync import push_to_github
+        push_to_github(SNAPSHOTS_FILE)
+    except Exception as e:
+        print(f"Error triggering sync: {e}")
+        
     return new_snapshots
 

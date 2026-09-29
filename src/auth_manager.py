@@ -23,6 +23,11 @@ def load_credentials():
 def save_credentials(creds):
     with open(CREDENTIALS_FILE_PATH, "w", encoding="utf-8") as f:
         json.dump(creds, f, indent=2)
+    try:
+        from src.github_sync import push_to_github
+        push_to_github(CREDENTIALS_FILE_PATH)
+    except Exception as e:
+        print(f"Error triggering sync: {e}")
 
 def hash_password(password):
     return hashlib.sha256(password.encode('utf-8')).hexdigest()
