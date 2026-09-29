@@ -105,8 +105,25 @@ def has_permission(permission_name):
 
 def init_auth_session():
     """Ensure session state variables for authentication are initialized."""
+    from streamlit_cookies_controller import CookieController
+    
+    if "cookie_controller" not in st.session_state:
+        st.session_state.cookie_controller = CookieController()
+        
     if "user" not in st.session_state:
-        st.session_state.user = None
+        # Check if auth token exists in cookies
+        auth_cookie = st.session_state.cookie_controller.get("auth_token")
+        if auth_cookie:
+            # Reconstruct the user session automatically
+            role = resolve_role(auth_cookie)
+            st.session_state.user = {
+                "email": auth_cookie,
+                "name": auth_cookie.split("@")[0],  # simple default name
+                "picture": None,
+                "role": role
+            }
+        else:
+            st.session_state.user = None
 
 def login_user(email, name="User", picture=None):
     """Store logged-in user info in st.session_state."""
@@ -117,10 +134,16 @@ def login_user(email, name="User", picture=None):
         "picture": picture,
         "role": role
     }
+    # Set the cookie with a 7-day expiration
+    if "cookie_controller" in st.session_state:
+        st.session_state.cookie_controller.set("auth_token", email, max_age=86400 * 7)
 
 def logout_user():
     """Clear user session state and query parameters."""
     st.session_state.user = None
+    if "cookie_controller" in st.session_state:
+        st.session_state.cookie_controller.remove("auth_token")
+        
     if hasattr(st, "query_params"):
         st.query_params.clear()
     st.rerun()
