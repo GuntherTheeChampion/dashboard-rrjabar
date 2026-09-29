@@ -7,8 +7,9 @@ import streamlit as st
 import requests
 import hashlib
 
-ROLES_FILE_PATH = os.path.join(os.path.dirname(__file__), "config", "roles.json")
-CREDENTIALS_FILE_PATH = os.path.join(os.path.dirname(__file__), "config", "credentials.json")
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROLES_FILE_PATH = os.path.join(ROOT_DIR, "config", "roles.json")
+CREDENTIALS_FILE_PATH = os.path.join(ROOT_DIR, "config", "credentials.json")
 
 def load_credentials():
     if os.path.exists(CREDENTIALS_FILE_PATH):

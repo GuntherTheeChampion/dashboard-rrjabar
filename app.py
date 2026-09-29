@@ -12,14 +12,14 @@ import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 
-from data_loader import clear_all_cache, fetch_workbook
-from snapshot_manager import load_snapshots, save_snapshot, delete_snapshot
-from data_processor import (
+from src.data_loader import clear_all_cache, fetch_workbook
+from src.snapshot_manager import load_snapshots, save_snapshot, delete_snapshot
+from src.data_processor import (
     COL_BRANCH, COL_MSISDN, COL_STATUS, COL_FOLLOWUP, COL_FU_STATUS,
     compute_followup_kpis, extract_customer_records, extract_rankings, extract_summary_kpis,
 )
-from trend_loader import MONTHS, load_trend_data
-from auth_manager import (
+from src.trend_loader import MONTHS, load_trend_data
+from src.auth_manager import (
     init_auth_session,
     render_login_component,
     render_user_header,
