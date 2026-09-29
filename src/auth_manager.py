@@ -111,8 +111,14 @@ def init_auth_session():
         st.session_state.cookie_controller = CookieController()
         
     if "user" not in st.session_state:
-        # Check if auth token exists in cookies
-        auth_cookie = st.session_state.cookie_controller.get("auth_token")
+        # Check if auth token exists in cookies synchronously via context
+        auth_cookie = None
+        if hasattr(st, "context") and hasattr(st.context, "cookies"):
+            auth_cookie = st.context.cookies.get("auth_token")
+            
+        if not auth_cookie:
+            auth_cookie = st.session_state.cookie_controller.get("auth_token")
+            
         if auth_cookie:
             # Reconstruct the user session automatically
             role = resolve_role(auth_cookie)
