@@ -1,5 +1,6 @@
 # app.py — GraPARI West Java Collection Monitoring Dashboard
 # Streamlit UI: tabs, filters, KPI cards, data table
+# Force reload!!!!!!
 # Entry point: streamlit run app.py
 
 import base64
@@ -20,10 +21,9 @@ from src.data_processor import (
 )
 from src.trend_loader import MONTHS, load_trend_data
 from src.auth_manager import (
-    init_auth_session,
-    render_login_component,
-    render_user_header,
     has_permission,
+    render_data_management_login,
+    logout_data_management,
 )
 
 # Page config — must be the first Streamlit call
@@ -243,17 +243,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Initialize Authentication Session
-init_auth_session()
-
-# Auth Guard — Render login screen if unauthenticated
-if not st.session_state.get("user"):
-    render_login_component()
-    st.stop()
-
-# Render User Header Bar (Profile, Email, Role, Logout)
-render_user_header()
-
 
 import datetime
 
@@ -280,20 +269,23 @@ if "current_page" not in st.session_state:
     st.session_state.current_page = "dashboard"
 
 if st.session_state.current_page == "admin":
-    if not (has_permission("save_snapshot") or has_permission("delete_snapshot")):
-        st.error("⛔ Akses Ditolak: Anda tidak memiliki izin untuk mengelola data periode.")
-        if st.button("⬅️ Kembali ke Dashboard"):
-            st.session_state.current_page = "dashboard"
-            st.rerun()
+    if not st.session_state.get("data_admin_logged_in"):
+        render_data_management_login()
         st.stop()
 
-    st.header("🗂️ Manajemen Periode Data")
-    if st.button("⬅️ Kembali ke Dashboard"):
-        st.session_state.current_page = "dashboard"
-        st.rerun()
+    st.header("Manajemen Periode Data")
+    
+    col_btn1, col_btn2, _ = st.columns([2, 2, 6])
+    with col_btn1:
+        if st.button("Kembali ke Dashboard", use_container_width=True):
+            st.session_state.current_page = "dashboard"
+            st.rerun()
+    with col_btn2:
+        if st.button("Logout Akun", use_container_width=True, type="secondary"):
+            logout_data_management()
         
     st.markdown("---")
-    st.subheader("➕ Tambah / Update Data (Kalender)")
+    st.subheader("Tambah / Update Data (Kalender)")
     new_date_obj = st.date_input("Pilih Tanggal:", value=datetime.date.today())
     new_date_str = new_date_obj.isoformat()
     
@@ -315,7 +307,7 @@ if st.session_state.current_page == "admin":
             st.rerun()
 
     st.markdown("---")
-    st.subheader("🗑️ Hapus Data Periode")
+    st.subheader("Hapus Data Periode")
     delete_display = [format_id_date(s.get("date", s["name"])) for s in snapshots]
     delete_selected = st.selectbox("**Pilih Periode untuk Dihapus:**", delete_display, key="del_select")
     del_idx = delete_display.index(delete_selected)
@@ -359,14 +351,14 @@ with col_sel:
 with col_btn1:
     st.markdown("<div style='margin-top: 1.75rem'></div>", unsafe_allow_html=True)
     if has_permission("save_snapshot") or has_permission("delete_snapshot"):
-        if st.button("⚙️ Kelola Data Periode", use_container_width=True):
+        if st.button("Kelola Data Periode", use_container_width=True):
             st.session_state.current_page = "admin"
             st.rerun()
 
 with col_btn2:
     st.markdown("<div style='margin-top: 1.75rem'></div>", unsafe_allow_html=True)
     if has_permission("clear_cache"):
-        if st.button("🔄 Refresh Data", type="secondary", help="Loading ulang untuk update data terbaru", use_container_width=True):
+        if st.button("Refresh Data", type="secondary", help="Loading ulang untuk update data terbaru", use_container_width=True):
             clear_all_cache()
             st.rerun()
 
